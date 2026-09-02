@@ -1,0 +1,6 @@
+# Runtime dependencies, pinned to the exact versions this was built and tested
+# against — so anyone cloning from the YouTube walkthrough gets the same thing
+# that works on my machine, not whatever's newest that day.
+scikit-learn==1.8.0
+pandas==2.2.3
+numpy==2.2.2

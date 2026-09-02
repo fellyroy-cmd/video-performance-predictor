@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Your real YouTube export is YOUR data, not the tool. The code runs on synthetic
+# data without it, and generates it on demand — so it never belongs in the repo.
+# (Remove this line only if you deliberately want to ship a sample CSV.)
+data/videos.csv
+
+# Local env / secrets (none needed yet, but keep the habit)
+.env
