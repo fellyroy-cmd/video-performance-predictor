@@ -31,6 +31,17 @@ it did (held-out R²) and which title features mattered, then scores a few examp
 titles. Drop a real export at `data/videos.csv` (see [`data/README.md`](data/README.md))
 and the exact same command retrains on real numbers.
 
+### Is the model actually any good?
+```bash
+python -m src.evaluate
+```
+`train` fits one model on one split — on a small channel that single R² can lie.
+`evaluate` is the honesty check: it runs **k-fold cross-validation** (every row
+gets to be test data once) and compares the model against a **baseline** that
+ignores the title and just guesses the average CTR. If the model can't beat that
+baseline, the title features carry no real signal — and the tool says so out
+loud. This is what tells me whether the thing works once real data lands.
+
 ## Tests
 ```bash
 pip install -r requirements-dev.txt
@@ -42,7 +53,7 @@ seen by the model through it — so that's what the tests pin down.
 ## Roadmap (this month)
 - [x] **Week 1** — scaffold, feature extraction + tests, synthetic pipeline that runs
 - [ ] **Week 2** — load my real YouTube export, retrain, compare to synthetic
-- [ ] **Week 3** — proper evaluation (train/test, cross-validation, baselines)
+- [x] **Week 3 (started early)** — evaluation harness: k-fold cross-validation + mean-guess baseline (`src/evaluate.py`). Built ahead on synthetic data; drops onto the real export unchanged.
 - [ ] **Week 4** — Streamlit "paste a title, get a score" UI + demo GIF → ship
 
 ## Honesty note
