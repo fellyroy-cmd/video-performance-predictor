@@ -4,3 +4,5 @@
 scikit-learn==1.8.0
 pandas==2.2.3
 numpy==2.2.2
+# Week 4 UI: paste-a-title scoring app (streamlit run app.py).
+streamlit==1.41.1

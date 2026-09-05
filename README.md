@@ -19,7 +19,7 @@ video's title and its click-through rate sit in YouTube Studio. So:
    (`src/features.py`).
 2. **Train a model** to predict CTR from those numbers (`src/train.py`).
 3. **Score new candidates** — paste a title, get a predicted CTR and see which
-   features helped. (Streamlit UI is Week 4.)
+   features helped, in a small Streamlit app (`app.py`).
 
 ## Run it
 ```bash
@@ -42,6 +42,17 @@ ignores the title and just guesses the average CTR. If the model can't beat that
 baseline, the title features carry no real signal — and the tool says so out
 loud. This is what tells me whether the thing works once real data lands.
 
+### The app — paste a title, get a score
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
+Opens a browser tab: paste your title candidates (one per line), get them ranked
+by predicted CTR, break down which features the model read out of any single
+title, and see what the model weighs most overall. Same honesty rule as the CLI
+— a big red banner until a real `data/videos.csv` is loaded, green once it is.
+The UI is a thin shell over the tested `rank_candidates()` logic in `src/train.py`.
+
 ## Tests
 ```bash
 pip install -r requirements-dev.txt
@@ -54,7 +65,7 @@ seen by the model through it — so that's what the tests pin down.
 - [x] **Week 1** — scaffold, feature extraction + tests, synthetic pipeline that runs
 - [ ] **Week 2** — load my real YouTube export, retrain, compare to synthetic
 - [x] **Week 3 (started early)** — evaluation harness: k-fold cross-validation + mean-guess baseline (`src/evaluate.py`). Built ahead on synthetic data; drops onto the real export unchanged.
-- [ ] **Week 4** — Streamlit "paste a title, get a score" UI + demo GIF → ship
+- [x] **Week 4 (UI built early)** — Streamlit "paste a title, get a score" app (`app.py`): ranked candidates, per-title feature breakdown, feature-importance chart. Built ahead on synthetic data; turns real the moment the Week-2 export lands. Demo GIF + ship still to come.
 
 ## Honesty note
 The synthetic scoring rule in `src/dataset.py` is invented. Its only job is to

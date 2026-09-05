@@ -79,6 +79,20 @@ def score(model, title: str) -> float:
     return float(model.predict(build_matrix([title]))[0])
 
 
+def rank_candidates(model, titles) -> list[tuple[str, float]]:
+    """Score a batch of titles, return (title, predicted_ctr) sorted best-first.
+
+    Kept here (not in the UI) and Streamlit-free on purpose: this is the logic
+    the app is really doing, so it lives in a tested module and the UI stays a
+    thin shell over it. Blank / whitespace-only lines are dropped so pasting a
+    list with empty rows just works. Ties keep their input order (Python's sort
+    is stable), so equal-scoring titles don't jump around between runs.
+    """
+    cleaned = [t.strip() for t in titles if t and t.strip()]
+    scored = [(t, score(model, t)) for t in cleaned]
+    return sorted(scored, key=lambda ts: ts[1], reverse=True)
+
+
 def _demo(model) -> None:
     print("Scoring a few example candidates (predicted CTR):")
     candidates = [
