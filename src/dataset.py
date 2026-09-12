@@ -85,23 +85,80 @@ def make_synthetic(n: int = 400, seed: int = 42) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+class BadVideosCsv(ValueError):
+    """data/videos.csv exists but isn't usable. Message always points at the fix.
+
+    A dedicated exception (not a bare ValueError) so callers — and tests — can
+    tell "your export needs a fix" apart from other, unrelated ValueErrors
+    instead of pattern-matching on a message string.
+    """
+
+
+_HELP = "See data/README.md for the exact export steps."
+
+
 def load(seed: int = 42) -> tuple[pd.DataFrame, bool]:
     """Return (dataframe, is_real).
 
     `is_real` is True only when a real `data/videos.csv` was found and loaded, so
     callers (train.py) can shout the honest warning when it's False.
+
+    Every failure mode here raises `BadVideosCsv` with a plain-language message
+    instead of letting a raw pandas/sklearn error (EmptyDataError,
+    UnicodeDecodeError, "could not convert string to float", "n_samples=0"...)
+    surface three function calls away from the actual cause. The goal: whatever
+    is wrong with the export, Dara sees ONE message that says what to fix.
     """
-    if os.path.exists(DATA_CSV):
+    if not os.path.exists(DATA_CSV):
+        return make_synthetic(seed=seed), False
+
+    try:
         df = pd.read_csv(DATA_CSV)
-        missing = {"title", "ctr"} - set(df.columns)
-        if missing:
-            raise ValueError(
-                f"{DATA_CSV} is missing required column(s): {sorted(missing)}. "
-                "Expected at least 'title' and 'ctr'."
-            )
-        df = df.dropna(subset=["title", "ctr"])
-        return df.reset_index(drop=True), True
-    return make_synthetic(seed=seed), False
+    except pd.errors.EmptyDataError as e:
+        raise BadVideosCsv(f"{DATA_CSV} is empty (no header, no rows). {_HELP}") from e
+    except UnicodeDecodeError as e:
+        raise BadVideosCsv(
+            f"{DATA_CSV} isn't readable as text (found non-UTF-8 bytes). "
+            f"Re-export and save it as plain CSV (UTF-8). {_HELP}"
+        ) from e
+    except pd.errors.ParserError as e:
+        raise BadVideosCsv(f"{DATA_CSV} isn't valid CSV: {e} {_HELP}") from e
+
+    missing = {"title", "ctr"} - set(df.columns)
+    if missing:
+        raise BadVideosCsv(
+            f"{DATA_CSV} is missing required column(s): {sorted(missing)}. "
+            f"Expected at least 'title' and 'ctr'. {_HELP}"
+        )
+
+    # A common real-export quirk: CTR saved as "4.8%" instead of 4.8. Strip a
+    # trailing '%' before the numeric check below so that case gets the same
+    # clear message as any other bad value, not a raw sklearn crash later.
+    if df["ctr"].dtype == object:
+        df["ctr"] = df["ctr"].astype(str).str.rstrip("%")
+
+    ctr_numeric = pd.to_numeric(df["ctr"], errors="coerce")
+    bad_ctr = ctr_numeric.isna() & df["ctr"].notna()
+    if bad_ctr.any():
+        examples = df.loc[bad_ctr, "ctr"].astype(str).unique()[:3]
+        raise BadVideosCsv(
+            f"{DATA_CSV} has non-numeric 'ctr' value(s), e.g. {list(examples)}. "
+            f"'ctr' must be a plain number like 4.8. {_HELP}"
+        )
+    df["ctr"] = ctr_numeric
+
+    df = df.dropna(subset=["title", "ctr"])
+    df = df[df["title"].astype(str).str.strip() != ""]
+    df = df.reset_index(drop=True)
+
+    if len(df) < 10:
+        raise BadVideosCsv(
+            f"{DATA_CSV} only has {len(df)} usable row(s) after cleaning "
+            f"(need at least 10 to train/test-split anything meaningful). "
+            f"Export more videos, or check that 'title' and 'ctr' are both filled in. {_HELP}"
+        )
+
+    return df, True
 
 
 def write_sample_csv(path: str = DATA_CSV, n: int = 400, seed: int = 42) -> None:
