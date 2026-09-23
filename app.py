@@ -19,6 +19,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from src.dataset import BadVideosCsv
 from src.features import FEATURE_NAMES, extract
 from src.train import rank_candidates, score, train
 
@@ -40,7 +41,18 @@ def get_model(seed: int = 42):
     return train(seed=seed)
 
 
-model, is_real = get_model()
+# A malformed data/videos.csv makes train() raise BadVideosCsv (see
+# src/dataset.py). Without this, Streamlit's default behaviour is to render
+# the raw Python traceback in the browser — technically correct, but exactly
+# the wrong moment to hand someone a stack trace: this fires the instant a
+# real export lands and something about it is slightly off. Catch it here,
+# once, and show the same plain-English message as a stoppable error banner
+# instead of letting the rest of the page try (and fail) to render.
+try:
+    model, is_real = get_model()
+except BadVideosCsv as e:
+    st.error(f"**Can't load your data/videos.csv:**\n\n{e}")
+    st.stop()
 
 st.title("\U0001F4C8 Video Performance Predictor")
 st.caption("Paste a title idea, get a predicted click-through rate before I publish.")
