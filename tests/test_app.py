@@ -5,10 +5,11 @@ returns. So most of this file tests that function, not the UI: get the ranking
 right and the UI is right by construction. Those tests import no Streamlit on
 purpose, so they run without the UI dependency installed.
 
-The one thing that lives only in app.py — catching BadVideosCsv so a broken
-data/videos.csv shows a clean banner instead of a raw traceback — can't be
-tested that way, since there's no ranking logic to call directly. For that one
-case we run the real app.py through Streamlit's own AppTest harness (bundled
+Two things live only in app.py and can't be tested that way, since there's no
+standalone function to call directly: catching BadVideosCsv so a broken
+data/videos.csv shows a clean banner instead of a raw traceback, and the trust
+panel that renders src/evaluate.py's cross-validation verdict on the page. For
+those we run the real app.py through Streamlit's own AppTest harness (bundled
 with streamlit, see requirements.txt), which needs the UI dependency.
 """
 from __future__ import annotations
@@ -111,3 +112,62 @@ def test_app_runs_clean_on_synthetic_data():
     at.run(timeout=30)
 
     assert at.exception == []
+
+
+# --- app.py's trust panel: must show evaluate.summarize()'s own numbers -----
+
+def test_trust_panel_matches_evaluate_summarize():
+    """The three metrics in the trust panel (R^2, model MAE, baseline MAE) must
+    be the exact numbers `evaluate.summarize()` computes for the same seeded
+    synthetic data — the app must not drift from the harness it's supposed to
+    be surfacing. This is the app.py-side companion to test_evaluate.py, which
+    already checks summarize() itself is correct.
+    """
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    from src.dataset import load
+    from src.evaluate import build_matrix, cross_validate, summarize
+
+    app_path = os.path.join(os.path.dirname(__file__), "..", "app.py")
+    at = AppTest.from_file(app_path)
+    at.run(timeout=30)
+    assert at.exception == []
+
+    # app.py's get_trust_summary() uses seed=42, k=5 by default -- match them.
+    df, is_real = load(seed=42)
+    assert is_real is False, "this test assumes the no-CSV synthetic path"
+    X = build_matrix(df["title"].tolist())
+    y = df["ctr"].to_numpy(dtype=float)
+    expected = summarize(cross_validate(X, y, k=5, seed=42))
+
+    metrics = {m.label: m.value for m in at.metric}
+    assert metrics["Model R² (avg across folds)"] == f"{expected['model_r2_mean']:.3f}"
+    assert metrics["Model MAE"] == (
+        f"{expected['model_mae_mean']:.2f} ± {expected['model_mae_std']:.2f}"
+    )
+    assert metrics["Baseline MAE (guess the mean)"] == f"{expected['base_mae_mean']:.2f}"
+
+    # The verdict banner must agree with beats_baseline, not just the numbers.
+    banner_text = " ".join(e.value for e in list(at.success) + list(at.warning))
+    if expected["beats_baseline"]:
+        assert "Beats the baseline" in banner_text
+    else:
+        assert "Does NOT beat the baseline" in banner_text
+
+
+def test_trust_panel_warns_loud_on_synthetic_data():
+    """On synthetic data the trust caption must say the verdict is about the
+    FAKE rule, not YouTube -- the honesty rule applies to this panel too.
+    """
+    pytest.importorskip("streamlit")
+    from streamlit.testing.v1 import AppTest
+
+    app_path = os.path.join(os.path.dirname(__file__), "..", "app.py")
+    at = AppTest.from_file(app_path)
+    at.run(timeout=30)
+
+    caption_text = " ".join(c.value for c in at.caption)
+    assert "SYNTHETIC" in caption_text
+    assert "fake" in caption_text.lower()
+    assert "says nothing" in caption_text or "nothing about YouTube" in caption_text
