@@ -51,7 +51,14 @@ Opens a browser tab: paste your title candidates (one per line), get them ranked
 by predicted CTR, break down which features the model read out of any single
 title, and see what the model weighs most overall. Same honesty rule as the CLI
 — a big red banner until a real `data/videos.csv` is loaded, green once it is.
-The UI is a thin shell over the tested `rank_candidates()` logic in `src/train.py`.
+
+Right below that banner is a **"Can you trust these scores?"** panel — the same
+k-fold cross-validation from `src/evaluate.py`, run once per session and shown
+as R², MAE, and the beats-baseline verdict, so nobody reads meaning into a
+ranked title before checking whether the model beats guessing the average.
+
+The UI is a thin shell over the tested `rank_candidates()` logic in `src/train.py`
+and the tested CV logic in `src/evaluate.py`.
 
 ## Tests
 ```bash
