@@ -16,7 +16,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.dataset import DATA_CSV, BadVideosCsv, load, make_synthetic
+from src.dataset import DATA_CSV, BadVideosCsv, load, make_synthetic, write_sample_csv
 
 
 @pytest.fixture(autouse=True)
@@ -106,3 +106,47 @@ def test_non_utf8_bytes_raise_clear_error():
 def test_bad_videos_csv_is_a_value_error_subclass():
     # Callers that only catch ValueError (older code, ad-hoc scripts) still work.
     assert issubclass(BadVideosCsv, ValueError)
+
+
+# --- write_sample_csv(): the "rehearse the real-data path" helper -----------
+# data/README.md tells Dara to call this by hand to test load()'s real-data
+# branch before a real export exists. It had no test coverage at all — these
+# pin down the two things that matter: it writes a file `load()` accepts as
+# real, and it never touches anything outside the `path` it's given.
+
+def test_write_sample_csv_produces_a_file_load_accepts_as_real(tmp_path):
+    out = tmp_path / "sample.csv"
+    write_sample_csv(path=str(out), n=50, seed=1)
+
+    assert out.exists()
+
+    # write_sample_csv() only writes a file; it doesn't touch DATA_CSV, so point
+    # load() at this exact path the same way app.py/train.py do in production.
+    import src.dataset as dataset_module
+
+    original_data_csv = dataset_module.DATA_CSV
+    try:
+        dataset_module.DATA_CSV = str(out)
+        df, is_real = load()
+    finally:
+        dataset_module.DATA_CSV = original_data_csv
+
+    assert is_real is True
+    assert len(df) == 50
+    assert set(df.columns) >= {"title", "ctr"}
+
+
+def test_write_sample_csv_is_reproducible_for_a_given_seed(tmp_path):
+    out_a = tmp_path / "a.csv"
+    out_b = tmp_path / "b.csv"
+    write_sample_csv(path=str(out_a), n=20, seed=7)
+    write_sample_csv(path=str(out_b), n=20, seed=7)
+    assert out_a.read_text(encoding="utf-8") == out_b.read_text(encoding="utf-8")
+
+
+def test_write_sample_csv_creates_missing_parent_directories(tmp_path):
+    # data/README.md's rehearsal snippet calls this with the default path, whose
+    # parent (data/) may not exist yet on a fresh clone -- must not crash on that.
+    nested = tmp_path / "nested" / "subdir" / "videos.csv"
+    write_sample_csv(path=str(nested), n=15, seed=1)
+    assert nested.exists()
