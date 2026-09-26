@@ -4,11 +4,14 @@ Learn what drives clicks on **my own** YouTube channel, then score new title ide
 before I publish. Project 2 of my 9-month "build an AI product every month" run
 ([Project Alpha](https://github.com/fellyroy-cmd)).
 
-> **Status: Week 1 — early scaffold, on purpose.** Right now it trains on
-> *synthetic* data (fake titles + a made-up scoring rule) so the whole pipeline
-> runs end to end today. **It has not learned anything real about YouTube yet.**
-> That starts when I load my actual analytics export (Week 2). The code shouts
-> this at you when it's running on synthetic data — by design.
+> **Status: feature extraction, training, evaluation, and the UI are all built
+> (Weeks 1, 3, 4) — Week 2 is the one still open.** Everything currently runs on
+> *synthetic* data (fake titles + a made-up scoring rule), so the whole pipeline —
+> train, cross-validate, score in the app — works end to end today, but **it has
+> not learned anything real about YouTube yet.** That starts the moment my real
+> analytics export lands at `data/videos.csv` (Week 2, blocked on my own data, not
+> the code). The app and CLI both shout this loudly whenever they're running on
+> synthetic data — by design, see the Roadmap below for exactly what's shipped.
 
 ## The idea
 I pick titles and thumbnails on vibes. But I have the data to do better — every
@@ -72,7 +75,7 @@ seen by the model through it — so that's what the tests pin down.
 - [x] **Week 1** — scaffold, feature extraction + tests, synthetic pipeline that runs
 - [ ] **Week 2** — load my real YouTube export, retrain, compare to synthetic
 - [x] **Week 3 (started early)** — evaluation harness: k-fold cross-validation + mean-guess baseline (`src/evaluate.py`). Built ahead on synthetic data; drops onto the real export unchanged.
-- [x] **Week 4 (UI built early)** — Streamlit "paste a title, get a score" app (`app.py`): ranked candidates, per-title feature breakdown, feature-importance chart. Built ahead on synthetic data; turns real the moment the Week-2 export lands. Demo GIF + ship still to come.
+- [x] **Week 4 (UI built early)** — Streamlit "paste a title, get a score" app (`app.py`): ranked candidates, per-title feature breakdown, feature-importance chart, and a "Can you trust these scores?" trust panel (k-fold CV vs. baseline, right in the UI). Built ahead on synthetic data; turns real the moment the Week-2 export lands.
 
 ## Honesty note
 The synthetic scoring rule in `src/dataset.py` is invented. Its only job is to
